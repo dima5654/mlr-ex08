@@ -4,6 +4,8 @@ My page: https://dima5654.github.io/mlr-ex08/
 
 Repository: https://github.com/dima5654/mlr-ex08
 
+The screenshot and probability table below are from the original Task 2 model. Its four files are kept in [task2_original/](task2_original/), including the [original expected probabilities](task2_original/check_expected.json). The page's root files now contain the Task 4 model and its new expected probabilities. Its new phone test will be recorded separately in REPORT.md.
+
 1. Testing on my phone
 
 I opened the Pages URL on my phone and pointed the camera at a leaf picture on my laptop. The probabilities updated live. In the screenshot, maple has the highest probability at 99.6927%. I also scanned the QR code at the bottom of the page and checked that it opens my app's exact URL.
@@ -39,7 +41,7 @@ The preprocessing is in [preprocess() in index.html](index.html#L35). These are 
 
 A JPEG that is already 96 × 96 does not need cropping or resizing, so its decoded pixels go directly to normalization. Camera frames and larger images go through the crop and resize steps. The JPEG fix did not change the normalization or channel order.
 
-These settings match [model_info.json](model_info.json), and the check image gives the expected results. I still need to compare the notebook's actual transform code, especially its resize interpolation and antialiasing settings. Matching the 96 × 96 check image alone does not test how larger images are resized.
+These settings match [model_info.json](model_info.json). The supplied notebook uses `Compose([ToTensor(), Normalize(mean, std)])` on images already centre-cropped and resized to 96 × 96 by the dataset preparation step. ToTensor divides by 255 and changes RGB to CHW, matching the page's normalization and channel order. The notebook does not resize these images at runtime, so matching the check image does not prove identical interpolation for larger camera frames.
 
 4. Do images leave the phone?
 

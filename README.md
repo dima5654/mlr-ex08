@@ -28,9 +28,11 @@ JPEG files (including the reference image and uploaded JPEGs) are decoded with t
 
 ## Verify
 
-Click **Run reference check**, or open `?selftest=1`. This runs `check_image.jpg` through the same preprocessing and model as camera frames, and compares with `check_expected.json`. The expected probabilities are apple 0.70185935, cherry 0.28628042, chestnut 0.01177154, maple 0.00008872. A completed result is also exposed as `window.referenceResult`.
+Click **Run reference check**, or open `?selftest=1`. This runs `check_image.jpg` through the same preprocessing and model as camera frames, and compares with `check_expected.json`. For the selected Task 4 model, the new expected probabilities are apple 0.09914806, cherry 0.85627663, chestnut 0.03354529, maple 0.01103004. A completed result is also exposed as `window.referenceResult`.
 
-The owner reported passing reference checks on laptop and phone after the JPEG decoder correction: both returned the same probabilities and input fingerprint `2c5a843a`, with every probability agreeing with check_expected.json to three decimals. Manually uploading check_image.jpg was also confirmed to give the same results. The owner confirmed that scanning the QR opens the exact public Pages URL above. [REVIEW.md](REVIEW.md) includes the supplied phone screenshot of live camera classification, numerical results, preprocessing and privacy checks, and the remaining notebook comparison. Task 4 is deferred; the local REPORT.md draft is not a completed Task 4 submission.
+The original Task 2 model passed laptop and phone reference checks after the JPEG decoder correction, with the same input fingerprint `2c5a843a`. Manual upload matched too, and the owner verified the QR URL. That model's four original assets are preserved in [task2_original/](task2_original/); the earlier results and screenshot in [REVIEW.md](REVIEW.md) refer to that model.
+
+The page now uses the Task 4 combined MobileNet, seed 0 (geometric and colour augmentation, cosine scheduling, 30 epochs). Across three seeds it averaged 71.43% normal validation and 73.81% camera-like validation accuracy. [REPORT.md](REPORT.md) contains the experimental measurements and remaining report work. New-model browser checks and real phone tests are pending. Model asset URLs include a version to avoid reusing the old cached model or expected values. The reference image is from the apple folder; this model predicts cherry for it, so a passing consistency check does not mean the prediction is correct.
 
 ## Publish with gh
 

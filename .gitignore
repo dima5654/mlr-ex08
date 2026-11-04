@@ -1,3 +1,6 @@
 .edge-test/
 .qa-*/
 *.log
+/task4_results.zip
+/task4_round2.zip
+/task4_export.zip

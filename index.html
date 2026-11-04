@@ -17,7 +17,7 @@
 <p><label for="upload">Or choose a leaf photo</label><br><input id="upload" type="file" accept="image/*" disabled></p>
 <p id="status" role="status">Loading model…</p><small>Images stay on your device. The central square is used for classification.</small>
 </section>
-<section><h2>Class probabilities</h2><div id="results"></div><small id="timing">Waiting for an image.</small></section>
+<section><h2>Class probabilities</h2><div id="results"></div><small id="timing">Waiting for an image.</small><p><small>Model: Task 4 combined MobileNet, seed 0.</small></p></section>
 <section><h2>Reference image check</h2><p>Runs check_image.jpg through the same pipeline and compares every probability with check_expected.json (absolute tolerance 0.005).</p><button id="check" class="secondary" disabled>Run reference check</button><pre id="checkResult" role="status">Not run yet.</pre></section>
 <footer><h2>Open Leaf Lens on your phone</h2><div class="share"><div id="qr" aria-label="QR code for this app"></div><div><strong>Scan to open this leaf classifier</strong><p><a id="appLink">Public app link available after deployment.</a></p><small id="qrStatus">QR code appears on the public GitHub Pages site.</small></div></div></footer>
 </main>
@@ -26,11 +26,13 @@
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
+const MODEL_VERSION='task4-mobile-combined-seed0-v1';
+function modelAsset(path){const url=new URL(path,location.href);url.searchParams.set('model',MODEL_VERSION);return url.href;}
 const video=$('video'), photo=$('photo');
 const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d',{willReadFrequently:true});
 let info,session,stream,live=false,busy=false,generation=0;
 const status = message => {$('status').textContent=message;};
-async function json(path){const r=await fetch(path);if(!r.ok)throw Error(`${path}: HTTP ${r.status}`);return r.json();}
+async function json(path){const r=await fetch(modelAsset(path));if(!r.ok)throw Error(`${path}: HTTP ${r.status}`);return r.json();}
 function stopCamera(){live=false;generation++;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;$('stop').disabled=true;}
 function preprocess(source){
   const w=source.videoWidth||source.naturalWidth, h=source.videoHeight||source.naturalHeight;
@@ -145,7 +147,7 @@ async function init(){
     info=await json('model_info.json');
     if(!Number.isInteger(info.input_size)||info.input_size<=0||info.mean.length!==3||info.std.length!==3||info.std.some(v=>v<=0))throw Error('Invalid model configuration.');
     info.classes.forEach((name,i)=>{const row=document.createElement('div');row.className='result';const label=document.createElement('span');label.textContent=name;const track=document.createElement('div');track.className='track';const bar=document.createElement('div');bar.id='bar'+i;bar.className='fill';bar.style.width='0%';track.append(bar);const value=document.createElement('span');value.className='value';value.id='prob'+i;value.textContent='—';row.append(label,track,value);$('results').append(row);});
-    session=await ort.InferenceSession.create('leaf_model.onnx',{executionProviders:['wasm'],graphOptimizationLevel:'all'});
+    session=await ort.InferenceSession.create(modelAsset('leaf_model.onnx'),{executionProviders:['wasm'],graphOptimizationLevel:'all'});
     lock(false);status('Ready. Start the camera or choose a photo.');
     if(new URLSearchParams(location.search).has('selftest'))await referenceCheck();
   }catch(e){status('Unable to load model: '+e.message);}
