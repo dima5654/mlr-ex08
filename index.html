@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#153e2d">
+<title>Leaf lens · Live leaf classifier</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6ef;color:#183b2c;font:17px system-ui,sans-serif}main{max-width:850px;margin:auto;padding:32px 20px}h1{font-size:clamp(2rem,6vw,3.4rem);margin:8px 0}p{line-height:1.6}.eyebrow{letter-spacing:.16em;font-size:.75rem;font-weight:700}section{background:white;border:1px solid #d9e2d5;border-radius:20px;padding:22px;margin:20px 0}.view{position:relative;aspect-ratio:1;background:#153e2d;border-radius:12px;overflow:hidden}.view video,.view img{width:100%;height:100%;object-fit:cover}.view img[hidden],.view video[hidden]{display:none}.guide{position:absolute;inset:12%;border:2px solid #e5f7b4;border-radius:10px;pointer-events:none}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}button,.upload{font:inherit;background:#215b3f;color:white;border:0;border-radius:9px;padding:12px 18px;cursor:pointer}button:disabled{opacity:.5;cursor:wait}.secondary,.upload{background:#eaf0e4;color:#183b2c}input{max-width:100%;margin-top:10px}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #c48627;outline-offset:3px}#status{min-height:1.6em}.result{display:grid;grid-template-columns:100px 1fr 90px;align-items:center;gap:12px;margin:18px 0}.track{background:#edf1e8;border-radius:9px;height:13px;overflow:hidden}.fill{height:100%;background:#538549;transition:width .15s}.value{text-align:right;font-variant-numeric:tabular-nums}small{color:#4e6555}#checkResult{white-space:pre-wrap;font-size:.85rem;overflow-wrap:anywhere}footer{border-top:1px solid #ccd8c8;margin-top:30px;padding-top:20px}.share{display:flex;gap:20px;align-items:center;flex-wrap:wrap}#qr svg{width:180px;height:180px;display:block}a{color:#215b3f;overflow-wrap:anywhere}
+</style>
+<main>
+<div class="eyebrow">LEAF LENS / FOUR SPECIES</div>
+<h1>Meet the leaf in front of you.</h1>
+<p>Point your rear camera at a leaf. Keep it in the centre of the square to see live probabilities for apple, cherry, chestnut and maple.</p>
+<section aria-label="Leaf image">
+<div class="view"><video id="video" muted playsinline autoplay hidden></video><img id="photo" alt="Selected leaf" hidden><div class="guide"></div></div>
+<div class="controls"><button id="start" disabled>Start rear camera</button><button id="stop" class="secondary" disabled>Stop camera</button></div>
+<p><label for="upload">Or choose a leaf photo</label><br><input id="upload" type="file" accept="image/*" disabled></p>
+<p id="status" role="status">Loading model…</p><small>Images stay on your device. The central square is used for classification.</small>
+</section>
+<section><h2>Class probabilities</h2><div id="results"></div><small id="timing">Waiting for an image.</small></section>
+<section><h2>Reference image check</h2><p>Runs check_image.jpg through the same pipeline and compares every probability with check_expected.json (absolute tolerance 0.005).</p><button id="check" class="secondary" disabled>Run reference check</button><pre id="checkResult" role="status">Not run yet.</pre></section>
+<footer><h2>Open Leaf Lens on your phone</h2><div class="share"><div id="qr" aria-label="QR code for this app"></div><div><strong>Scan to open this leaf classifier</strong><p><a id="appLink">Public app link available after deployment.</a></p><small id="qrStatus">QR code appears on the public GitHub Pages site.</small></div></div></footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const video=$('video'), photo=$('photo');
+const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d',{willReadFrequently:true});
+let info,session,stream,live=false,busy=false,generation=0;
+const status = message => {$('status').textContent=message;};
+async function json(path){const r=await fetch(path);if(!r.ok)throw Error(`${path}: HTTP ${r.status}`);return r.json();}
+function stopCamera(){live=false;generation++;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;$('stop').disabled=true;}
+function preprocess(source){
+  const w=source.videoWidth||source.naturalWidth, h=source.videoHeight||source.naturalHeight;
+  if(!w||!h)throw Error('Image has no decoded pixels.');
+  const side=Math.min(w,h),size=info.input_size;
+  canvas.width=canvas.height=size;
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.drawImage(source,(w-side)/2,(h-side)/2,side,side,0,0,size,size);
+  const rgba=ctx.getImageData(0,0,size,size).data, area=size*size, data=new Float32Array(3*area);
+  for(let c=0;c<3;c++)for(let i=0;i<area;i++)data[c*area+i]=(rgba[4*i+c]/255-info.mean[c])/info.std[c];
+  return new ort.Tensor('float32',data,[1,3,size,size]);
+}
+async function classify(source){
+  const begin=performance.now();
+  const input=preprocess(source),output=await session.run({[session.inputNames[0]]:input});
+  // This model's linear_1 output contains logits: stable softmax gives probabilities.
+  const logits=Array.from(output[session.outputNames[0]].data);
+  if(logits.length!==info.classes.length||!logits.every(Number.isFinite))throw Error('Unexpected model output.');
+  const max=Math.max(...logits), exps=logits.map(v=>Math.exp(v-max)),sum=exps.reduce((a,b)=>a+b,0);
+  return {probabilities:exps.map(v=>v/sum),ms:performance.now()-begin};
+}
+function show(result){result.probabilities.forEach((v,i)=>{$('prob'+i).textContent=(v*100).toFixed(4)+'%';$('bar'+i).style.width=(v*100)+'%';});$('timing').textContent=`Updated ${new Date().toLocaleTimeString()} · ${Math.round(result.ms)} ms inference`;}
+async function loop(token){
+  if(!live||token!==generation)return;
+  if(!busy&&video.readyState>=2&&!document.hidden){busy=true;try{const r=await classify(video);if(live&&token===generation)show(r);}catch(e){stopCamera();status('Camera inference failed: '+e.message);}finally{busy=false;}}
+  if(live&&token===generation)setTimeout(()=>loop(token),120);
+}
+$('start').onclick=async()=>{
+  $('start').disabled=true;
+  try{
+    if(!navigator.mediaDevices?.getUserMedia)throw Error('Camera requires HTTPS and camera permission. Use photo upload instead.');
+    stopCamera();
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:640}},audio:false});
+    video.srcObject=stream;video.hidden=false;photo.hidden=true;
+    await video.play();live=true;$('stop').disabled=false;status('Live · analysing the central square');loop(generation);
+  }catch(e){stopCamera();status('Cannot start camera: '+e.message+' You can choose a photo below.');}
+  finally{$('start').disabled=false;}
+};
+$('stop').onclick=()=>{stopCamera();status('Camera stopped.');};
+async function waitIdle(){while(busy)await new Promise(r=>setTimeout(r,30));}
+function loadImage(url){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(Error('Could not decode this image. Try a JPEG or PNG.'));image.src=url;});}
+function lock(value){$('start').disabled=$('upload').disabled=$('check').disabled=value;}
+$('upload').onchange=async event=>{
+  const file=event.target.files[0];if(!file)return;stopCamera();lock(true);const url=URL.createObjectURL(file);
+  try{await waitIdle();const img=await loadImage(url);photo.src=url;photo.hidden=false;video.hidden=true;show(await classify(img));status('Photo classified · central square');}
+  catch(e){status(e.message);}finally{URL.revokeObjectURL(url);lock(false);event.target.value='';}
+};
+async function referenceCheck(){
+  stopCamera();lock(true);$('checkResult').textContent='Checking…';
+  try{
+    await waitIdle();const [image,expected]=await Promise.all([loadImage('check_image.jpg'),json('check_expected.json')]);
+    const r=await classify(image);show(r);photo.src=image.src;photo.hidden=false;video.hidden=true;
+    const rows=info.classes.map((name,i)=>({name,actual:r.probabilities[i],expected:expected[name],error:Math.abs(r.probabilities[i]-expected[name])}));
+    const passed=rows.every(row=>Number.isFinite(row.expected)&&row.error<=0.005);
+    window.referenceResult={passed,rows};
+    $('checkResult').textContent=(passed?'PASS':'FAIL')+' · absolute tolerance 0.005\n'+rows.map(r=>`${r.name}: actual ${r.actual.toFixed(8)}, expected ${Number(r.expected).toFixed(8)}, error ${r.error.toFixed(8)}`).join('\n');
+    status(passed?'Reference image check passed.':'Reference check failed; see differences below.');
+  }catch(e){$('checkResult').textContent='ERROR: '+e.message;status('Reference check could not run.');}finally{lock(false);}
+}
+$('check').onclick=referenceCheck;
+function share(){
+  // Derive the deployed repository URL from its actual HTTPS location, never a guessed account.
+  if(location.protocol!=='https:'||!location.hostname.endsWith('.github.io'))return;
+  const url=new URL('./',location.href).href;
+  const qr=qrcode(0,'M');qr.addData(url,'Byte');qr.make();
+  $('qr').innerHTML=qr.createSvgTag({cellSize:5,margin:20,scalable:true});
+  $('qr').dataset.encodedUrl=url;
+  $('appLink').href=url;$('appLink').textContent=url;
+  if($('appLink').href!==$('qr').dataset.encodedUrl)throw Error('QR/link URL mismatch.');
+  $('qrStatus').textContent='Generated in your browser for this deployed app.';
+  window.qrEncodedURL=url;
+}
+async function init(){
+  try{
+    if(location.protocol==='file:'){
+      status('This page cannot load the model when opened by double-clicking. In this folder, run: powershell -ExecutionPolicy Bypass -File .\\serve.ps1, then open http://localhost:8000/. For the iPhone camera, use the published HTTPS GitHub Pages URL.');
+      return;
+    }
+    if(typeof ort==='undefined')throw Error('ONNX Runtime CDN could not load. Check your connection and reload.');
+    ort.env.wasm.numThreads=1;ort.env.wasm.proxy=false;
+    ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+    info=await json('model_info.json');
+    if(!Number.isInteger(info.input_size)||info.input_size<=0||info.mean.length!==3||info.std.length!==3||info.std.some(v=>v<=0))throw Error('Invalid model configuration.');
+    info.classes.forEach((name,i)=>{const row=document.createElement('div');row.className='result';const label=document.createElement('span');label.textContent=name;const track=document.createElement('div');track.className='track';const bar=document.createElement('div');bar.id='bar'+i;bar.className='fill';bar.style.width='0%';track.append(bar);const value=document.createElement('span');value.className='value';value.id='prob'+i;value.textContent='—';row.append(label,track,value);$('results').append(row);});
+    session=await ort.InferenceSession.create('leaf_model.onnx',{executionProviders:['wasm'],graphOptimizationLevel:'all'});
+    lock(false);status('Ready. Start the camera or choose a photo.');
+    if(new URLSearchParams(location.search).has('selftest'))await referenceCheck();
+  }catch(e){status('Unable to load model: '+e.message);}
+}
+try{share();}catch(e){$('qrStatus').textContent='QR unavailable: '+e.message;}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&live){stopCamera();status('Camera paused. Tap Start rear camera to resume.');}});
+window.addEventListener('pagehide',stopCamera);
+init();
+</script>
+</html>
