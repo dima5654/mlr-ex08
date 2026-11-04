@@ -64,4 +64,4 @@ No image-upload feature needed to be removed. The QR is also generated in the br
 
 Submission
 
-The public repository contains the app and the four supplied files. README.md has the Pages URL, and this review includes the phone screenshot. MLRteacher has been invited as a collaborator. Task 4 is being left for later. The notebook transform comparison above still needs to be completed.
+The public repository contains the app and the four supplied files, with the original Task 2 assets preserved in task2_original/. README.md has the Pages URL, and this review includes the Task 2 phone screenshot. MLRteacher has been invited as a collaborator. Task 4 experiments and the new phone test are recorded separately in REPORT.md; its final interpretation still needs to be written in my own words. The notebook transform comparison is included above.

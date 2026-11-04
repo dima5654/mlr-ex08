@@ -1,0 +1,134 @@
+{
+  "baseline": "CNN: Task 3d; MobileNet: full fine-tuning without augmentation; final epoch",
+  "experiments": [
+    [
+      "baseline",
+      "cnn",
+      true,
+      false,
+      0.0,
+      false,
+      15
+    ],
+    [
+      "cnn_colour_cosine",
+      "cnn",
+      true,
+      true,
+      0.0,
+      true,
+      15
+    ],
+    [
+      "cnn_smoothing_cosine",
+      "cnn",
+      true,
+      false,
+      0.1,
+      true,
+      15
+    ],
+    [
+      "cnn_all_three",
+      "cnn",
+      true,
+      true,
+      0.1,
+      true,
+      15
+    ],
+    [
+      "mobile_full",
+      "mobile_full",
+      false,
+      false,
+      0.0,
+      false,
+      15
+    ],
+    [
+      "mobile_frozen",
+      "mobile_frozen",
+      false,
+      false,
+      0.0,
+      false,
+      15
+    ],
+    [
+      "mobile_geometry",
+      "mobile_full",
+      true,
+      false,
+      0.0,
+      false,
+      15
+    ],
+    [
+      "mobile_colour",
+      "mobile_full",
+      false,
+      true,
+      0.0,
+      false,
+      15
+    ],
+    [
+      "mobile_cosine",
+      "mobile_full",
+      false,
+      false,
+      0.0,
+      true,
+      15
+    ],
+    [
+      "mobile_30epochs",
+      "mobile_full",
+      false,
+      false,
+      0.0,
+      false,
+      30
+    ],
+    [
+      "mobile_combined",
+      "mobile_full",
+      true,
+      true,
+      0.0,
+      true,
+      30
+    ]
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "batch_size": 32,
+  "optimizer": "Adam",
+  "learning_rate": 0.001,
+  "mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "classes": [
+    "apple",
+    "cherry",
+    "chestnut",
+    "maple"
+  ],
+  "camera_seed": 2026,
+  "camera_fixture": "reused unchanged from round 1",
+  "camera_transform": "Compose(\n    RandomResizedCrop(size=(96, 96), scale=(0.6, 1.0), ratio=(0.75, 1.3333), interpolation=bilinear, antialias=True)\n    RandomRotation(degrees=[-20.0, 20.0], interpolation=nearest, expand=False, fill=0)\n    ColorJitter(brightness=(0.8, 1.2), contrast=(0.8, 1.2), saturation=(0.8, 1.2), hue=(-0.05, 0.05))\n    ToTensor()\n    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])\n)",
+  "camera_sha256": "3b4cbe291f15cad9342b6a9276d2acf705501ea0c1a4e0762bc51a01425ed9da",
+  "torch_version": "2.11.0+cu130",
+  "device": "cuda"
+}
