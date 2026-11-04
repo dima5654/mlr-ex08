@@ -24,7 +24,7 @@ Settings and class order are loaded from `model_info.json`: apple, cherry, chest
 4. Pack float32 values in NCHW order, shape `[1, 3, 96, 96]`.
 5. Apply numerically stable softmax to the model's `linear_1` logits.
 
-Browser image decoding and resize interpolation can cause small numeric differences. The reference checker reports every actual/expected value and absolute error, with an absolute tolerance of 0.005. It does not replace model output with expected values.
+JPEG files (including the reference image and uploaded JPEGs) are decoded with the same pinned [MozJPEG WASM decoder](https://github.com/jamsinclair/jSquash/tree/main/packages/jpeg) on every browser, avoiding differences between Safari and desktop native JPEG decoders. A 96 x 96 JPEG feeds those decoded pixels directly into normalization without a canvas colour conversion. Other sizes still use the same central crop and canvas resize; other image formats use browser decoding. Live video consumes decoded camera frames directly. Resize interpolation can cause small numeric differences. The reference checker reports every actual/expected value and absolute error, with an unchanged absolute tolerance of 0.005. It also shows a fingerprint of the actual input tensor to help distinguish decoding differences from runtime differences. It does not replace model output with expected values.
 
 ## Verify
 
