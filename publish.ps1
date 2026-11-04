@@ -7,8 +7,11 @@ $profile = $profileJson | ConvertFrom-Json
 $login = $profile.login
 $repo = "$login/mlr-ex08"
 $url = "https://$login.github.io/mlr-ex08/"
+$ErrorActionPreference = 'Continue'
 $existing = gh repo view $repo --json nameWithOwner,isPrivate 2>$null
-if ($LASTEXITCODE -eq 0) {
+$queryExit = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+if ($queryExit -eq 0) {
     $metadata = $existing | ConvertFrom-Json
     if ($metadata.nameWithOwner -ne $repo -or $metadata.isPrivate) { throw 'Expected a public repository owned by your GitHub account.' }
     Write-Host "Resuming publication to $repo"
@@ -35,17 +38,25 @@ if ($LASTEXITCODE -eq 1) {
     git commit -m 'Build live leaf classifier with camera, photo fallback and browser QR'
     Assert-Success 'Commit'
 } elseif ($LASTEXITCODE -ne 0) { throw 'Could not inspect staged changes.' }
-$origin = git remote get-url origin 2>$null
-if ($LASTEXITCODE -ne 0) {
+$remotes = @(git remote)
+Assert-Success 'Listing remotes'
+if ($remotes -notcontains 'origin') {
     git remote add origin "https://github.com/$repo.git"
     Assert-Success 'Remote setup'
-} elseif ($origin -ne "https://github.com/$repo.git" -and $origin -ne "git@github.com:$repo.git") {
-    throw "Origin points to a different repository: $origin"
+} else {
+    $origin = git remote get-url origin
+    Assert-Success 'Reading origin'
+    if ($origin -ne "https://github.com/$repo.git" -and $origin -ne "git@github.com:$repo.git") {
+        throw "Origin points to a different repository: $origin"
+    }
 }
 git push -u origin main
 Assert-Success 'Push'
+$ErrorActionPreference = 'Continue'
 $pages = gh api "repos/$repo/pages" 2>$null
-if ($LASTEXITCODE -eq 0) {
+$pagesExit = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+if ($pagesExit -eq 0) {
     gh api --method PUT "repos/$repo/pages" -f 'source[branch]=main' -f 'source[path]=/'
 } else {
     gh api --method POST "repos/$repo/pages" -f 'source[branch]=main' -f 'source[path]=/'

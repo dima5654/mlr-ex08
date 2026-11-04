@@ -39,3 +39,4 @@ Run `./publish.ps1` in PowerShell from this folder after GitHub CLI networking/a
 Dependencies: [ONNX Runtime Web deployment](https://onnxruntime.ai/docs/tutorials/web/deploy.html), [QR generator](https://github.com/kazuhikoarase/qrcode-generator). QR pixels are generated locally in the browser; no external QR-image service is used.
 
 
+
