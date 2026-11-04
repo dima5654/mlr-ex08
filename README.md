@@ -30,7 +30,7 @@ JPEG files (including the reference image and uploaded JPEGs) are decoded with t
 
 Click **Run reference check**, or open `?selftest=1`. This runs `check_image.jpg` through the same preprocessing and model as camera frames, and compares with `check_expected.json`. The expected probabilities are apple 0.70185935, cherry 0.28628042, chestnut 0.01177154, maple 0.00008872. A completed result is also exposed as `window.referenceResult`.
 
-The reference inference and iPhone Safari behavior have not been verified in this restricted environment. A live deployment and independent QR decode are also pending. On the deployed page, `window.qrEncodedURL`, the footer link, and `#qr.dataset.encodedUrl` identify the QR payload. Scan the code on another device to independently verify it opens the same live page.
+The owner reported passing reference checks on laptop and phone after the JPEG decoder correction: both returned the same probabilities and input fingerprint `2c5a843a`, with every probability agreeing with check_expected.json to three decimals. Manually uploading check_image.jpg was also confirmed to give the same results. The owner confirmed that scanning the QR opens the exact public Pages URL above. [REVIEW.md](REVIEW.md) includes the supplied phone screenshot of live camera classification, numerical results, preprocessing and privacy checks, and the remaining notebook comparison. Task 4 is deferred; the local REPORT.md draft is not a completed Task 4 submission.
 
 ## Publish with gh
 
